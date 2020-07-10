@@ -6,8 +6,8 @@ from copy import copy
 from string import digits
 from dicts import *
 
-class WiktionaryParser(object):
-    def __init__(self,language='english',url_preffix='en', verbose=False):
+class RussianParser(object):
+    def __init__(self,language='русский'):
         self.url_preffix = url_preffix.lower()
         self.url = "https://{}.wiktionary.org/wiki/{}?printable=yes"
         self.soup = None
@@ -19,8 +19,6 @@ class WiktionaryParser(object):
         self.PARTS_OF_SPEECH = copy(PARTS_OF_SPEECH)
         self.RELATIONS = copy(RELATIONS)
         self.INCLUDED_ITEMS = self.RELATIONS + self.PARTS_OF_SPEECH + ['etymology', 'pronunciation','translations']
-        
-        self.verbose = verbose
         
         self._transl_tag = []
         self.item0 = []
@@ -393,7 +391,9 @@ class WiktionaryParser(object):
             span_tag = soup.find_all('span', {'id': translations_id})[0]
             transl_tag = span_tag.parent.find_next_sibling()
         else:
+            print('here')
             transl_tag = span.find_next_sibling()
+            print(span.find_next_sibling())
         self._transl_tag.append(transl_tag)
         transl_siblings = []
         while True:
@@ -425,7 +425,7 @@ class WiktionaryParser(object):
                     data_obj.audio_links = audio_links
             for definition_index, definition_text, definition_type in word_data['definitions']:
                 if current_etymology[0] <= definition_index < next_etymology[0]:
-                    if self.verbose: print('\n>>', definition_index, definition_text)
+                    print('\n>>', definition_index, definition_text)
                     def_obj = Definition()
                     def_obj.text = definition_text
                     def_obj.part_of_speech = definition_type
@@ -444,7 +444,7 @@ class WiktionaryParser(object):
                             found = True
                     if not found:
                         for translations_index, translations_dict in word_data['translations']:
-                            #print(translations_index, definition_index)
+                            print(translations_index, definition_index)
                             #print('here', translations_dict)
                             if translations_index.startswith(".".join(definition_index.split(".", 2)[:2])):
                                 def_obj.translations = translations_dict
@@ -487,15 +487,10 @@ class WiktionaryParser(object):
             json_obj_list.append(data_obj.to_json())
         return json_obj_list
 
-    def fetch(self, word, language=None, wordclass=False):
+    def fetch(self, word, language=None):
         language = language or self.language
         response = self.session.get(self.url.format(self.url_preffix, word))
         self.soup = BeautifulSoup(response.text.replace('>\n<', '><'), 'html.parser')
         self.current_word = word
         self.clean_html()
-        word_data = self.get_word_data(language.lower())
-        if not wordclass:
-            return word_data
-        else:
-            from wiktutils import Word
-            return Word(word_data, self.current_word)
+        return self.get_word_data(language.lower())
