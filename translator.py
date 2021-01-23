@@ -24,3 +24,6 @@ while True:
 
     word = parser.fetch(inp,lang_source,True)
     word.translation(lang_target)
+
+# TODO: Investigate why word 'bishop' (eng to rus) gives error!!!!!!
+# TODO: Fix main when there is main and sub (ex. eng to fr, "angry")
