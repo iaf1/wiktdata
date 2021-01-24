@@ -7,23 +7,37 @@ from wiktutils import Word
 
 clearlog()
 
-mother_parser = WiktionaryParser()
-pit_parser = WiktionaryParser()
-beam_parser = WiktionaryParser()
-read_parser = WiktionaryParser()
+RAISE = 1
 
-autolog('FETCHING "MOTHER"', 3)
-mother_word = mother_parser.fetch('mother', None, 0)
+try:
 
-autolog('FETCHING "PIT"', 3)
-pit_word = pit_parser.fetch('pit', None, 0)
+    parser = WiktionaryParser()
+    mother_parser = WiktionaryParser()
+    pit_parser = WiktionaryParser()
+    beam_parser = WiktionaryParser()
+    read_parser = WiktionaryParser()
 
-autolog('FETCHING "BEAM"', 3)
-beam_word = beam_parser.fetch('beam', None, 0)
+    autolog('FETCHING CUSTOM WORD', 3)
+    word = parser.fetch('angry', None, 0)
 
-autolog('FETCHING "READ"', 3)
-read_word = read_parser.fetch('read', None, 0)
+    raise KeyboardInterrupt
 
+    autolog('FETCHING "MOTHER"', 3)
+    mother_word = mother_parser.fetch('mother', None, 0)
+
+    autolog('FETCHING "PIT"', 3)
+    pit_word = pit_parser.fetch('pit', None, 0)
+
+    autolog('FETCHING "BEAM"', 3)
+    beam_word = beam_parser.fetch('beam', None, 0)
+
+    autolog('FETCHING "READ"', 3)
+    read_word = read_parser.fetch('read', None, 0)
+
+except:
+    if RAISE: raise Exception
+
+debug = parser.DEBUG
 mother = mother_parser.DEBUG
 pit = pit_parser.DEBUG
 beam = beam_parser.DEBUG

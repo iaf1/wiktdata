@@ -320,39 +320,77 @@ class WiktionaryParser(object):
         autolog('CHECKOUT')
         return related_words_list
 
-    def extract_languages(self, translation_contents):
+
+    def extract_languages(self, sense_tag):
         autolog('CHECKIN')
 
-        translations = []
-        for translation_content in translation_contents:
-            try:
-                sense = translation_content.find('div').text
-            except:
-                continue
-            lang_tags = translation_content.find_all('li')
-            lang_dict = {}
-            for lang_tag in lang_tags:
-                if lang_tag.find_all('dd') == []:
-                    # There are no dialects (subitems in a language)
-                    lang_dict = dict(lang_dict, **self.extract_language_item(lang_tag))
-                else:
-                    # There are dialects
-                    # TODO: Add option of there being a main entry (e.g. eng to french "angry")
-                    lang = lang_tag.text.split(':')[0]
-                    descriptions_dict = {}
-                    for descr in lang_tag.find_all('dd'):
-                        if descr.find_all('dl') == []:
-                            descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
-                        else:
-                            for descr2 in descr.find_all('dl'):
-                                descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr2))
-                                descr2.extract()
-                            descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
-                    lang_dict[lang.lower()] = descriptions_dict
-            translations.append((sense, lang_dict))
-                
+        lang_tags = sense_tag.find_all('li')
+        lang_dict = {}
+        for lang_tag in lang_tags:
+            if lang_tag.find_all('dl') == []:
+                # There are no dialects (subitems in a language)
+                lang_dict = dict(lang_dict, **self.extract_language_item(lang_tag))
+            else:
+                # There are dialects
+                lang = lang_tag.text.split(':')[0]
+                descriptions_dict = {}
+
+                temp = copy(lang_tag)
+                temp.find('dl').extract()
+
+                if temp.text.replace('\n','').split(':')[1] != '':
+                    # There is still a main entry
+                    autolog('SENDING {}'.format(temp), 2)
+                    descriptions_dict = dict(descriptions_dict, **self.extract_language_item(temp))
+
+                for descr in lang_tag.find_all('dd'):
+                    if descr.find_all('dl') == []:
+                        autolog('LANG: {}, NOT dl: {}'.format(lang, descr), 0)
+                        descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
+                    else:
+                        autolog('SPECIAL CASE. LANG: {}, YES dl: {}'.format(lang, descr), 2)
+                        for descr2 in descr.find_all('dl'):
+                            descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr2))
+                            descr2.extract()
+                        descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
+                lang_dict[lang.lower()] = descriptions_dict
+        
+        if self.DEBUG.get('extract_languages') is None: self.DEBUG['extract_languages'] = lang_dict
+
         autolog('CHECKOUT')
-        return translations
+        return lang_dict
+
+    # Is now deprecated =============================================================
+    def extract_languageS_DEPRECATED(self, sense_tag):
+        autolog('CHECKIN')
+
+        lang_tags = sense_tag.find_all('li')
+        lang_dict = {}
+        for lang_tag in lang_tags:
+            if lang_tag.find_all('dd') == []:
+                # There are no dialects (subitems in a language)
+                lang_dict = dict(lang_dict, **self.extract_language_item(lang_tag))
+            else:
+                # There are dialects
+                # TODO: Add option of there being a main entry (e.g. eng to french "angry")
+                lang = lang_tag.text.split(':')[0]
+                descriptions_dict = {}
+                for descr in lang_tag.find_all('dd'):
+                    if descr.find_all('dl') == []:
+                        autolog('LANG: {}, NOT dl: {}'.format(lang, descr), 2)
+                        descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
+                    else:
+                        autolog('LANG: {}, YES dl: {}'.format(lang, descr), 2)
+                        for descr2 in descr.find_all('dl'):
+                            descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr2))
+                            descr2.extract()
+                        descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
+                lang_dict[lang.lower()] = descriptions_dict
+        
+        if self.DEBUG.get('extract_languages') is None: self.DEBUG['extract_languages'] = lang_dict
+
+        autolog('CHECKOUT')
+        return lang_dict
 
 
     def extract_language_item(self, lang_tag):
@@ -394,19 +432,34 @@ class WiktionaryParser(object):
         
         
     def parse_translations(self):
+        """Returns a structure of the kind:
+        [
+            ( index1, [
+                        sense 1.1, {lang1: transl1, lang2: defs2, ... },
+                        sense 1.2, {lang1: transl1, lang2: defs2, ... },
+                        ...
+                      ]
+            ),
+            ( index2, ...),
+            ...
+        ]
+            """
         autolog('CHECKIN')
         word_contents = self.word_contents
         translations_id_list = self.get_id_list('translations')
         translations_list = []
 
         for translations_index, translations_id, _ in translations_id_list:
+
+            cur_translation_list = []
+
             span_tag = self.soup.find_all('span', {'id': translations_id})[0]
             if self.DEBUG.get('transl1') is None: self.DEBUG['transl1'] = span_tag
-            cur_transl_dict = self.parse_translations_attempt(span_tag.parent.find_next_sibling())
+            cur_transl_senses = self.get_senses(span_tag.parent.find_next_sibling())
             
             # If translations are somewhere else, go look for them
-            if len(cur_transl_dict) == 1 and '/translations' in cur_transl_dict[0].text:
-                url2 = cur_transl_dict[0].find('a').get('href').replace('/wiki/','')
+            if len(cur_transl_senses) == 1 and '/translations' in cur_transl_senses[0][1].text:
+                url2 = cur_transl_senses[0][1].find('a').get('href').replace('/wiki/','')
 
                 session2 = requests.Session()
                 session2.mount("http://", requests.adapters.HTTPAdapter(max_retries = 2))
@@ -418,40 +471,68 @@ class WiktionaryParser(object):
 
                 if self.DEBUG.get('transl2') is None: self.DEBUG['transl2'] = span_tag
 
-                cur_transl_dict = self.parse_translations_attempt(span_tag.parent.find_next_sibling().find_next_sibling())
+                cur_transl_senses = self.get_senses(span_tag.parent.find_next_sibling().find_next_sibling())
+
+            for (sense, sense_tag) in cur_transl_senses:
+
+                cur_translation_list.append((sense, self.extract_languages(sense_tag)))
+
                 
             
-            translations_dicts = self.extract_languages(cur_transl_dict)
+            if self.DEBUG.get('cur_transl_list') is None: self.DEBUG['cur_transl_list'] = cur_translation_list
             
-            translations_list.append((translations_index, translations_dicts))
-        
+            translations_list.append((translations_index, cur_translation_list))
+                
+        autolog('translations_list: {}'.format(translations_list), 0)
+
         self.DEBUG['translations_list'] = translations_list
         self.DEBUG['parse_translations'] = translations_list
 
         autolog('CHECKOUT')
         return translations_list
 
-    def parse_translations_attempt(self, transl_tag):
-        autolog('CHECKIN')
 
-        self._transl_tag.append(transl_tag)
-        transl_siblings = []
+    def get_senses(self, transl_tag):
+        """Builds and returns a dictionary of translation siblings (bs4.element.Tag),
+        i.e. one for each of the senses of a word.
+        Output format:
+            {
+                (sense1, bs4.element.Tag with all the languages),
+                (sense2, bs4.element.Tag with all the languages),
+            }
+        """
+        autolog('CHECKIN')
+        self.DEBUG['transl_tag'] = transl_tag
+
+        sense_tag = transl_tag
+
+        senses = []
+
         while True:
+            # Check if the table of senses is over
+            if sense_tag is None:
+                break
             try:
-                transl_tag_name = transl_tag.name
+                sense_tag_name = sense_tag.name
             except:
-                transl_tag_name = None
-            if transl_tag_name in ['h3','h4','h5',None]:
+                break
+            if sense_tag_name in ['h3','h4','h5']:
                 break
 
-            transl_siblings.append(transl_tag)
-            transl_tag = transl_tag.find_next_sibling()
+            # get the sense name
+            sense_header = sense_tag.find('div')
+            if sense_header is None:
+                sense = ''
+            else:
+                sense = sense_header.text
+
+            # add to dictionary
+            senses.append((sense, sense_tag))
+            self.DEBUG['last_transl_tag'] = sense_tag
+            sense_tag = sense_tag.find_next_sibling()
         
         autolog('CHECKOUT')
-        return transl_siblings
-        
-        #if return_tag_translations: return translations_tags
-        #return translations_list
+        return senses
 
     def map_to_object(self, word_data):
         autolog('CHECKIN')
