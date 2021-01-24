@@ -9,6 +9,35 @@ Created on Fri Jul 10 08:35:54 2020
 def invert_dict(original_dict):
     return {v: k for k, v in original_dict.items()}
 
+
+class IdentityDict:
+    def __getitem__(self,item):
+        return item
+
+    def get(self, item, *args, **kwargs):
+        return item
+
+
+class Translator:
+    def __init__(self, source_lang, target_lang, dictionary):
+        self.source = source_lang
+        self.target = target_lang
+        self.dictionary = dictionary
+
+    def __call__(self, arg):
+        if isinstance(arg, str):
+            return self[arg]
+
+        elif isinstance(arg, list):
+            out = []
+            for el in arg:
+                out.append(self[el])
+            return out
+
+    def __getitem__(self, item):
+        return self.dictionary.get(item)
+
+
 PARTS_OF_SPEECH = [
     "noun", "verb", "adjective", "adverb", "determiner",
     "article", "preposition", "conjunction", "proper noun",
@@ -47,7 +76,9 @@ PARTS_OF_SPEECH_DICT = {
     "pronoun"       : "pron",
 }
 
+
 PARTS_OF_SPEECH_INV = invert_dict(PARTS_OF_SPEECH_DICT)
+
 
 ENGLISH_RUSSIAN_DICT = {
     "noun"          : "существительное",
@@ -71,6 +102,14 @@ ENGLISH_RUSSIAN_DICT = {
     "interjection"  : "междометие", 
     "definitions"   : "определения",
     "pronoun"       : "местоимение",
+    "translations"  : "перевод",
+    "etymology"     : "этимология",
+    "prounuciation" : "произношение",
 }
 
+
 RUSSIAN_ENGLISH_DICT = invert_dict(ENGLISH_RUSSIAN_DICT)
+
+
+IDENTITY = IdentityDict()
+
