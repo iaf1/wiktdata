@@ -3,6 +3,6 @@ e.g. (english to french 'angry')
 
     Fix the representation: 'french-french' should come first when calling Word().translation('french')
 
-- Investigate why english to russian 'bishop' gives error
+- Organize project files
 
 - Implement Russian parser

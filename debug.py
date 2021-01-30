@@ -9,44 +9,63 @@ clearlog()
 
 RAISE = 1
 
-try:
 
-    parser = WiktionaryParser()
-    mother_parser = WiktionaryParser()
-    pit_parser = WiktionaryParser()
-    beam_parser = WiktionaryParser()
-    read_parser = WiktionaryParser()
+def default():
 
-    autolog('FETCHING CUSTOM WORD', 3)
-    word = parser.fetch('angry', None, 0)
+    try:
+        mother_parser = WiktionaryParser()
+        pit_parser = WiktionaryParser()
+        beam_parser = WiktionaryParser()
+        read_parser = WiktionaryParser()
 
-    raise KeyboardInterrupt
+        autolog('FETCHING "MOTHER"', 3)
+        mother_word = mother_parser.fetch('mother', None, 0)
 
-    autolog('FETCHING "MOTHER"', 3)
-    mother_word = mother_parser.fetch('mother', None, 0)
+        autolog('FETCHING "PIT"', 3)
+        pit_word = pit_parser.fetch('pit', None, 0)
 
-    autolog('FETCHING "PIT"', 3)
-    pit_word = pit_parser.fetch('pit', None, 0)
+        autolog('FETCHING "BEAM"', 3)
+        beam_word = beam_parser.fetch('beam', None, 0)
 
-    autolog('FETCHING "BEAM"', 3)
-    beam_word = beam_parser.fetch('beam', None, 0)
+        autolog('FETCHING "READ"', 3)
+        read_word = read_parser.fetch('read', None, 0)
 
-    autolog('FETCHING "READ"', 3)
-    read_word = read_parser.fetch('read', None, 0)
+        mother = mother_parser.DEBUG
+        pit = pit_parser.DEBUG
+        beam = beam_parser.DEBUG
+        read = read_parser.DEBUG
 
-except:
-    if RAISE: raise Exception
+        return { 'mother_parser': mother_parser,
+                 'pit_parser' : pit_parser,
+                 'beam_parser' : beam_parser,
+                 'read_parser' : read_parser,
+                 'mother_word': mother_word,
+                 'pit_word' : pit_word,
+                 'beam_word' : beam_word,
+                 'read_word' : read_word,
+                 'mother' : mother,
+                 'pit' : pit,
+                 'beam' : beam,
+                 'read' : read,
+               }
 
-debug = parser.DEBUG
-mother = mother_parser.DEBUG
-pit = pit_parser.DEBUG
-beam = beam_parser.DEBUG
-read = read_parser.DEBUG
+    except:
+        if RAISE: raise Exception
 
-et = []
 
-for i in range(9):
-    et.append( (str(i)+'a', str(i)+'b') )
+def custom(word):
+    try:
+
+        parser = WiktionaryParser()
+        autolog('FETCHING CUSTOM WORD: {}'.format(word), 3)
+        word = parser.fetch(word, None, 0)
+        debug = parser.DEBUG
+
+        return parser, word, debug
+
+    except:
+        if RAISE: raise Exception
+
 
 
 def repr0(wd):
@@ -73,9 +92,3 @@ def repr0(wd):
                 if tin.startswith(".".join(din.split(".", 3)[:3])):
                     print('\t\tIn if #3')
 
-
-
-
-
-#for (cur, nxt) in zip_longest(et, et[1:], fillvalue=('99','')): 
-#    print(cur, nxt) 

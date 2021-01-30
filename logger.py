@@ -34,6 +34,8 @@ def autolog(message, arg=1):
         underline = '='*len(message)
         message = '\n\n\t{}\n\t{}\n\t{}\n\n'.format(underline, message, underline)
 
+    message = str(message)
+
     # Dump the message + the name of this function to the log.
     logger.debug('{2:<20s} {3:>4d} | {1:<30s} | {0:s}'.format(
         message, 

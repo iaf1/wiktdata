@@ -360,75 +360,53 @@ class WiktionaryParser(object):
         autolog('CHECKOUT')
         return lang_dict
 
-    # Is now deprecated =============================================================
-    def extract_languageS_DEPRECATED(self, sense_tag):
-        autolog('CHECKIN')
-
-        lang_tags = sense_tag.find_all('li')
-        lang_dict = {}
-        for lang_tag in lang_tags:
-            if lang_tag.find_all('dd') == []:
-                # There are no dialects (subitems in a language)
-                lang_dict = dict(lang_dict, **self.extract_language_item(lang_tag))
-            else:
-                # There are dialects
-                # TODO: Add option of there being a main entry (e.g. eng to french "angry")
-                lang = lang_tag.text.split(':')[0]
-                descriptions_dict = {}
-                for descr in lang_tag.find_all('dd'):
-                    if descr.find_all('dl') == []:
-                        autolog('LANG: {}, NOT dl: {}'.format(lang, descr), 2)
-                        descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
-                    else:
-                        autolog('LANG: {}, YES dl: {}'.format(lang, descr), 2)
-                        for descr2 in descr.find_all('dl'):
-                            descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr2))
-                            descr2.extract()
-                        descriptions_dict = dict(descriptions_dict, **self.extract_language_item(descr))
-                lang_dict[lang.lower()] = descriptions_dict
-        
-        if self.DEBUG.get('extract_languages') is None: self.DEBUG['extract_languages'] = lang_dict
-
-        autolog('CHECKOUT')
-        return lang_dict
-
 
     def extract_language_item(self, lang_tag):
         unwanted_classes = ['tpos']
         enclose_classes = ['gender']
-        items_dict = {}
+
+        # Extract unwanted classes. Enclose genders
         for tag in lang_tag.find_all(True, {'class': unwanted_classes}):
             tag.extract()
         for tag in lang_tag.find_all(True, {'class': enclose_classes}):
             tag.replace_with('['+tag.text+']')
+
+        # Take text, and separate: lang & translation (by colon)
         text = lang_tag.text
         try:
             key, items_text = text.split(': ',1)
+            autolog(f'KEY: {key}\n\tITEMS_TEXT: {items_text}', 2)
         except:
             print(text)
             raise Exception("Impossible to extract language")
+
+        # Separate different items (by commas)
+        # Also, replace '[[a|b]]' for 'b' (gender notation)
         items_list = items_text.split(', ')
         for i in range(len(items_list)):
             item = items_list[i]
             if '[[' in item and ']]' in item and '|' in item:
                 items_list[i] = item.split('|')[1].replace(']]','')
+
+        # If all ',()' chars are in text, go through list so as to ignore , between ()
         if ',' in items_text and '(' in items_text and ')' in items_text:
             items_new = []
             cur_chain = []
             connecting = False
+            counts = [0, 0]
             for el in items_list:
-                if '(' in el and not ')' in el:
-                    connecting = True
-                elif ')' in el and not '(' in el:
-                    connecting = False
+                counts[0] += el.count('(')
+                counts[1] += el.count(')')
                 cur_chain.append(el)
-                if connecting is False:
+                if counts[0] == counts[1]:
                     items_new.append(', '.join(cur_chain))
                     cur_chain = []
+
             items_list = items_new
-            #print(items_list)
-        items_dict[key.lower()] = items_list if len(items_list) > 1 else items_list[0]
-        return items_dict
+
+        # Return a dict whose value is the list or its only element
+        return {key.lower() : items_list if len(items_list) > 1 else items_list[0]}
+
         
         
     def parse_translations(self):
@@ -459,6 +437,7 @@ class WiktionaryParser(object):
             
             # If translations are somewhere else, go look for them
             if len(cur_transl_senses) == 1 and '/translations' in cur_transl_senses[0][1].text:
+                autolog(cur_transl_senses, 2)
                 url2 = cur_transl_senses[0][1].find('a').get('href').replace('/wiki/','')
 
                 session2 = requests.Session()
