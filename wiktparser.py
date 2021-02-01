@@ -374,7 +374,8 @@ class WiktionaryParser(object):
         # Take text, and separate: lang & translation (by colon)
         text = lang_tag.text
         try:
-            key, items_text = text.split(': ',1)
+            key, items_text = text.split(':',1)
+            text = [el.strip() for el in text]
             autolog(f'KEY: {key}\n\tITEMS_TEXT: {items_text}', 2)
         except:
             print(text)

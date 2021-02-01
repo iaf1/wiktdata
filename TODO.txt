@@ -1,3 +1,5 @@
+- Apparently, sometimes <li> tags list dialects (e.g. Fula for 'dictionary'). Those entries are lost. fix that.
+
 - When there is a main language AND dialects:
 e.g. (english to french 'angry')
 
